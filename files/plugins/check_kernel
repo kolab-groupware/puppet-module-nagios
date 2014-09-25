@@ -1,0 +1,36 @@
+#!/usr/bin/perl -w
+
+# Usage:   check_kernel
+
+use strict;
+use lib "/usr/local/nagios/libexec";
+use utils qw(%ERRORS);
+
+my $running_kernel=`uname -r`;
+my $installed_kernel=`rpm -q kernel | tail -n 1`;
+my $rpm = `which rpm`;
+
+chomp $running_kernel;
+chomp $installed_kernel;
+
+if ($rpm =~ m/no rpm in/i) {
+   print "UNKNOWN - You must be running an RPM-based system\n";
+   exit $ERRORS{'UNKNOWN'};
+}
+
+if (!defined $running_kernel || !defined $installed_kernel) {
+   print "UNKNOWN - Test failed\n";
+   exit $ERRORS{'UNKNOWN'};
+}
+
+# Strip off the "kernel-" prefix so the strings will match
+$installed_kernel =~ s/kernel-//gi;
+
+# Do the test
+if ($running_kernel eq $installed_kernel) {
+   print "OK - running latest installed kernel ($running_kernel)\n";
+   exit $ERRORS{'OK'};
+} else {
+   print "WARNING - reboot to run latest installed kernel ($installed_kernel)\n";
+   exit $ERRORS{'WARNING'};
+}

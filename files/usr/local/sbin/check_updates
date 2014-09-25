@@ -1,0 +1,83 @@
+#!/bin/sh
+
+PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
+
+PROGNAME=`basename $0`
+PROGPATH=`echo $0 | sed -e 's,[\\/][^\\/][^\\/]*$,,'`
+REVISION=`echo '$Revision: 0.1 $' | sed -e 's/[^0-9.]//g'`
+
+[ -f "/usr/lib/nagios/plugins/utils.sh" ] && . /usr/lib/nagios/plugins/utils.sh
+[ -f "/usr/lib64/nagios/plugins/utils.sh" ] && . /usr/lib64/nagios/plugins/utils.sh
+
+print_usage() {
+    echo "Usage: $PROGNAME -w [warning] -c [critical]"
+}
+
+print_help() {
+    print_revision $PROGNAME $REVISION
+    echo ""
+    print_usage
+    echo ""
+    echo "This plugin checks the number of updates."
+    echo ""
+    support
+    exit 0
+}
+
+VERBOSE=0
+WARNING=10
+CRITICAL=50
+
+while [ $# -gt 0 ]; do
+
+    case "$1" in
+        --help)
+            print_help
+            exit 0
+        ;;
+        -h)
+            print_help
+            exit 0
+        ;;
+        -w)
+            WARNING=$2
+            shift; shift
+        ;;
+        -c)
+            CRITICAL=$2
+            shift; shift
+        ;;
+        --version)
+            print_revision $PROGNAME $REVISION
+            exit 0
+        ;;
+        -V)
+            print_revision $PROGNAME $REVISION
+            exit 0
+        ;;
+        -v)
+            VERBOSE=1
+            shift
+        ;;
+    esac
+done
+
+yum_check_update=`yum -d0 -e0 check-update 2>&1 | wc -l`
+status=$?
+
+[ ${VERBOSE} -eq 1 ] && echo yum -e0 check-update
+
+if test ${status} -eq 127; then
+    echo "UPDATES UNKNOWN - YUM command not found"
+    exit -1
+fi
+if [ `echo ${yum_check_update} | wc -l` -gt $CRITICAL ]; then
+    echo "UPDATES CRITICAL - $(echo ${yum_check_update} | wc -l) YUM updates"
+    exit 2
+elif [ `echo ${yum_check_update} | wc -l` -gt $WARNING ]; then
+    echo "UPDATES WARNING - $(echo ${yum_check_update} | wc -l) YUM updates"
+    exit 2
+else
+    echo "UPDATES OK - Only $(echo ${yum_check_update} | wc -l) YUM updates"
+    exit 0
+fi
